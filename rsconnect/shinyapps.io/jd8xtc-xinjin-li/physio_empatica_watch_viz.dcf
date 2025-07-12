@@ -1,0 +1,13 @@
+name: physio_empatica_watch_viz
+title: physio_empatica_watch_viz
+username: jd8xtc-xinjin-li
+account: jd8xtc-xinjin-li
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15063844
+bundleId: 10601348
+url: https://jd8xtc-xinjin-li.shinyapps.io/physio_empatica_watch_viz/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: README.md
