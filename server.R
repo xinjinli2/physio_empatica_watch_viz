@@ -5,51 +5,64 @@ library(plotly)
 library(jsonlite)
 library(lubridate)
 library(reticulate)
-use_condaenv("r-reticulate", required = TRUE)
-
 library(shinyjs)
 
 options(shiny.maxRequestSize = 200 * 1024^2)
 
-# Insert your python AVRO extraction code below
-py_run_string("
-import os
-import pandas as pd
-from avro.datafile import DataFileReader
-from avro.io import DatumReader
+if (Sys.info()[["user"]] == "shiny") {
+  reticulate::py_install(packages = c("pandas", "numpy", "avro-python3"), envname = "r-reticulate", method = "auto")
+}
 
-def empatica_to_csv_memory(avro_dir):
-    eda_all = []
-    bvp_all = []
-    for filename in os.listdir(avro_dir):
-        if filename.endswith('.avro'):
-            filepath = os.path.join(avro_dir, filename)
-            reader = DataFileReader(open(filepath, 'rb'), DatumReader())
-            data = next(reader)
-            reader.close()
-            eda = data['rawData']['eda']
-            freq_eda = eda['samplingFrequency']
-            if freq_eda > 0 and eda['values']:
-                start_eda = eda['timestampStart']
-                eda_timestamps = [round(start_eda + i * (1e6 / freq_eda)) for i in range(len(eda['values']))]
-                eda_df = pd.DataFrame({'unix_timestamp': eda_timestamps, 'eda': eda['values']})
-                eda_all.append(eda_df)
-            bvp = data['rawData']['bvp']
-            freq_bvp = bvp['samplingFrequency']
-            if freq_bvp > 0 and bvp['values']:
-                start_bvp = bvp['timestampStart']
-                bvp_timestamps = [round(start_bvp + i * (1e6 / freq_bvp)) for i in range(len(bvp['values']))]
-                bvp_df = pd.DataFrame({'unix_timestamp': bvp_timestamps, 'bvp': bvp['values']})
-                bvp_all.append(bvp_df)
-    eda_concat = pd.concat(eda_all).sort_values('unix_timestamp').reset_index(drop=True) if eda_all else pd.DataFrame()
-    bvp_concat = pd.concat(bvp_all).sort_values('unix_timestamp').reset_index(drop=True) if bvp_all else pd.DataFrame()
-    return {'eda': eda_concat, 'bvp': bvp_concat}
-")
+# if (Sys.info()[["user"]] == "shiny") {
+#   # Use system Python (Python 3.8 on shinyapps.io)
+#   reticulate::use_python(Sys.which("python3"), required = TRUE)
+#   
+#   reticulate::py_install(c("pandas", "numpy", "avro-python3"), pip = TRUE)
+#   
+#   
+#   # Install Python packages if they don't already exist
+#   if (!reticulate::py_module_available("pandas")) {
+#     reticulate::py_install(c("pandas", "numpy", "avro-python3"), pip = TRUE)
+#   }
+# }
+
+# if (Sys.info()[["user"]] == "shiny") {
+#   reticulate::use_virtualenv("r-reticulate", required = TRUE)
+# }
+
+
+
+# # --- Python setup (local vs shinyapps.io) ---
+# user <- Sys.info()[["user"]]
+# virtualenv_dir <- Sys.getenv("VIRTUALENV_NAME", unset = "watchapp_env")
+# # python_path <- Sys.getenv("PYTHON_PATH", unset = "python3")
+# python_path <- "/opt/python/3.9.13/bin/python3"
+# 
+# 
+# # Only run this block if on shinyapps.io
+# if (user == "shiny") {
+#   tryCatch({
+#     if (!reticulate::virtualenv_exists(virtualenv_dir)) {
+#       # reticulate::install_python(version = "3.10.13")
+#       # reticulate::install_python(version = "3.9.13")
+#       reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+#       reticulate::virtualenv_install(virtualenv_dir, packages = c("pandas", "avro-python3", "numpy"), ignore_installed = TRUE)
+#     }
+#     reticulate::use_virtualenv(virtualenv_dir, required = TRUE)
+#   }, error = function(e) {
+#     stop("Python virtualenv setup failed on server: ", e$message)
+#   })
+# }
+
+
+# If running locally, .Rprofile will already call use_python(), so do nothing
+# Load Python functions
+reticulate::source_python("python_functions.py")
+
 
 server <- function(input, output, session) {
-  output$py_status <- renderPrint({
-    reticulate::py_config()
-  })
+  output$py_status <- renderPrint({ py_config() })
+  
   
   
   # Internal storage
@@ -91,10 +104,12 @@ server <- function(input, output, session) {
       values$status <- "No AVRO files found in Watch ZIP!"; return()
     }
     py$avro_dir <- avro_dir
-    py$watch_data <- py$empatica_to_csv_memory(py$avro_dir)
+    # py$watch_data <- py$empatica_to_csv_memory(py$avro_dir) this is old version
+    watch_data_raw <- empatica_to_csv_memory(avro_dir)
+    
     values$watch_data <- list(
-      eda = as_tibble(py$watch_data$eda),
-      bvp = as_tibble(py$watch_data$bvp)
+      eda = as_tibble(watch_data_raw$eda),
+      bvp = as_tibble(watch_data_raw$bvp)
     )
     values$status <- "Data loaded!"
     updateSliderInput(session, "window_start", value = 0)

@@ -5,7 +5,7 @@ account: jd8xtc-xinjin-li
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15063844
-bundleId: 10601348
+bundleId: 10605421
 url: https://jd8xtc-xinjin-li.shinyapps.io/physio_empatica_watch_viz/
 version: 1
 asMultiple: FALSE

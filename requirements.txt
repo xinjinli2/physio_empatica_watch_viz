@@ -1,3 +1,0 @@
-pandas
-avro-python3
-numpy
